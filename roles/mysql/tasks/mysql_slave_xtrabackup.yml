@@ -1,0 +1,102 @@
+
+# This 2 first lines are checking MySQL is stopped. When we set up replicas for first time MySQL hast to
+# be stopped, otherwise it could mean someone forgot bootsrap_enabled variable as True, if so remove it please.
+
+- name: Check if MySQL is up
+  shell: /sbin/service mysql status || true
+  register: mysql_status
+  changed_when: False
+  tags: streaming_backup
+
+- fail: msg="MySQL is running, for safety reasons Ansible will not configure replication. Check it please"
+  when:  mysql_status.stdout.find('SUCCESS') != -1
+  tags: streaming_backup
+
+#- name: ensure no other backup running on donor machine {{backup_src}}
+#  shell: (! ssh -q -o StrictHostKeyChecking=no {{backup_src}} "test -f /tmp/FS_inprogress.lock")
+#  changed_when: False
+#  tags: streaming_backup
+
+- name: Streaming the backup from {{ backup_src }} to {{ inventory_hostname }} 
+  shell: ssh -c arcfour256 -q -o StrictHostKeyChecking=no {{backup_src}} '(ulimit -n 8192; innobackupex --no-version-check --parallel=50 --slave-info --socket=/var/lib/mysql/mysql.sock --user={{ my_backup_user }} --password='{{ my_backup_pass }}' --tmpdir={{ backup_dir }}/tmp --defaults-file=/etc/my.cnf --stream=xbstream --extra-lsndir={{ backup_dir}}/lsn_incr {{ backup_dir }}/full/ )' | ssh -o StrictHostKeyChecking=no -c arcfour256 -q {{ inventory_hostname }} " xbstream -x -v -C {{ datadir }}"
+  tags: 
+        - streaming_backup
+        - just_streaming_backup
+
+- file: path={{ datadir }} state=directory owner=mysql group=mysql recurse=yes
+  sudo: yes
+  tags: 
+        - streaming_backup
+
+- name: Preparing Data
+  shell: xtrabackup --prepare --use-memory={{ (ansible_memtotal_mb * 0.25) |round|int }}M --target-dir={{ datadir }}
+  sudo: yes
+  tags: streaming_backup
+
+# Remove auto.cnf before starting MySQL to change server-uuid
+- file: path={{ datadir }}/auto.cnf state=absent
+
+
+- name: Ensure mysql is running
+  service: name=mysqld state=started
+  sudo: yes
+  tags: streaming_backup
+
+# Getting position file. Ugly! I need to set 2 different lines, because when ansible skips the registered variable,
+# it overwrites as 'skipped'
+
+- name: Extract replication log_file from replication cords of backup server 
+  shell: grep -o "MASTER_LOG_FILE=\('.*'\)" {{ datadir }}/xtrabackup_slave_info |awk -F= '{print $2}'
+  register: slave_file
+  when: backup_src != master_host
+  sudo: yes
+  tags: 
+        - streaming_backup
+        - change_master
+- name: Extract replication log_file from binlog of backup server
+  shell: awk '{print $1}'  {{ datadir }}/xtrabackup_binlog_info
+  register: slave_file2
+  sudo: yes
+  tags: 
+        - streaming_backup
+        - change_master
+
+# Getting position
+- name: Extract replication pos from replication cords of backup server
+  shell: grep -o "MASTER_LOG_POS=\(.*\)" {{ datadir }}/xtrabackup_slave_info |awk -F= '{print $2}'
+  register: slave_position
+  when: backup_src != master_host
+  sudo: yes
+  tags: 
+        - streaming_backup
+        - change_master
+
+- name: Extract replication pos from backup server binlog
+  shell: awk '{print $2}'  {{ datadir }}/xtrabackup_binlog_info
+  register: slave_position2
+  sudo: yes
+  tags: 
+        - streaming_backup
+        - change_master
+
+- name: Use backup server replication cords
+  shell: /usr/bin/mysql -u{{ my_root_user }} -p{{ my_root_pass }} -e "CHANGE MASTER TO MASTER_HOST='{{ master_host }}', MASTER_USER='{{ my_replica_user }}', MASTER_PASSWORD='{{ my_repl_pass }}', MASTER_LOG_FILE={{ slave_file.stdout }}, MASTER_LOG_POS={{ slave_position.stdout }};"
+  when: ( repl_from_master | bool  ) and ( backup_src != master_host ) and ( not ( skip_change_master | bool ) )
+  tags: 
+        - streaming_backup
+        - change_master
+
+- name: Use backup server binlog cords
+  shell: /usr/bin/mysql -u{{ my_root_user }} -p{{ my_root_pass }} -e "CHANGE MASTER TO MASTER_HOST='{{ master_host }}', MASTER_USER='{{ my_replica_user }}', MASTER_PASSWORD='{{ my_repl_pass }}', MASTER_LOG_FILE='{{ slave_file2.stdout }}', MASTER_LOG_POS={{ slave_position2.stdout }};"
+  when: ( ( not (repl_from_master | bool ) ) or (backup_src == master_host) ) and ( not skip_change_master )
+  tags: 
+        - streaming_backup
+        - change_master
+
+- name : Start mysql slave
+  shell: /usr/bin/mysql -u{{ my_root_user }} -p{{ my_root_pass}} -e "start slave"
+  when:  not skip_change_master
+  tags: 
+        - streaming_backup
+        - start_slave
+

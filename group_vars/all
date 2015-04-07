@@ -1,0 +1,21 @@
+---
+# Variables listed here are applicable to all host groups
+ec2_tools_dir: "/usr/local/aws-tools/ec2/"
+dbdir: /db
+datadir: "{{ dbdir }}/data"
+logsdir: "{{ dbdir }}/log"
+tmpdir: "{{ dbdir }}/tmp"
+backup: false
+bootstrap_enabled: false
+my_backup_user: backup
+my_purge_user: purge
+my_root_user: root
+my_repl_user: repl
+
+mysql_role: master
+readwrite_slave: False
+my_mha_user: mha
+mysql_uid: 4242
+mysql_gid: 4242
+dba_group: dba
+dba_gid: 4444

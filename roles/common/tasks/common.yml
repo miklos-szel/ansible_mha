@@ -1,0 +1,190 @@
+---
+ 
+   # Configure SYSCTL adjust these values to your instance 
+#   - sysctl: name=net.ipv4.tcp_rmem value='4096 1048576 8388608' state=present sysctl_set=yes ignoreerrors=yes
+#   - sysctl: name=net.core.rmem_max value=8388608 state=present sysctl_set=yes ignoreerrors=yes
+#   - sysctl: name=net.core.wmem_max value=8388608 state=present sysctl_set=yes ignoreerrors=yes
+#   - sysctl: name=net.ipv4.tcp_tw_recycle value=0 state=present sysctl_set=yes ignoreerrors=yes
+#   - sysctl: name=net.ipv4.tcp_tw_reuse value=1 state=present sysctl_set=yes ignoreerrors=yes
+
+   - sysctl: name=net.ipv4.tcp_fin_timeout value=20 state=present sysctl_set=yes ignoreerrors=yes
+   - sysctl: name=net.ipv4.tcp_keepalive_time value=60 state=present sysctl_set=yes ignoreerrors=yes
+   - sysctl: name=net.ipv4.tcp_keepalive_probes value=9 state=present sysctl_set=yes ignoreerrors=yes
+   - sysctl: name=net.ipv4.tcp_keepalive_intvl value=5 state=present sysctl_set=yes ignoreerrors=yes
+   - sysctl: name=fs.file-max value=6815744 state=present sysctl_set=yes ignoreerrors=yes
+   - sysctl: name=net.ipv4.ip_local_port_range value='2000 65500' state=present sysctl_set=yes ignoreerrors=yes
+   - sysctl: name="net.bridge.bridge-nf-call-ip6tables"  state=absent ignoreerrors=yes
+   - sysctl: name="net.bridge.bridge-nf-call-iptables"  state=absent ignoreerrors=yes
+   - sysctl: name="net.bridge.bridge-nf-call-arptables"  state=absent ignoreerrors=yes
+   - sysctl: name=vm.swappiness value=0 state=present sysctl_file=/etc/sysctl.conf sysctl_set=yes ignoreerrors=yes
+
+   # propagate SSH private key 
+   - template: src=root/.ssh/id_rsa dest=/root/.ssh/id_rsa owner=root group=root mode=0400
+     sudo_user: root
+     when: bootstrap_enabled
+     tags: 
+       - keypair
+
+   # Sanity. Create mysql user before other package takes mysql uid/gid
+   - group: name=mysql state=present gid={{ mysql_gid }}
+     tags: basic_setup 
+   - user: name=mysql comment="MySQL server" uid={{ mysql_uid }} home=/var/lib/mysql group=mysql createhome=no
+     when: bootstrap_enabled
+     tags: basic_setup
+
+   # MHA requires inter-node communication and we also need to stream backups 
+   - template: src=root/.ssh/authorized_keys  dest=/root/.ssh/authorized_keys owner=root group=root mode=0400
+     sudo_user: root
+     when: bootstrap_enabled
+     tags: 
+       - keypair
+
+   - copy: src=root/.bashrc_extra dest=/root/.bashrc_extra owner=root group=root mode=0644
+     tags: 
+       - basic_setup
+
+   - copy: src=root/{{ item }} dest=/root/{{ item }} owner=root group=root mode=0644
+     with_items:
+       - .bashrc_extra
+     tags: 
+       - basic_setup
+
+   - name: include .bash_extra in the .bashrc 
+     lineinfile: line=". .bashrc_extra " dest=/root/.bashrc state=present insertafter="EOF"
+     tags: 
+       - basic_setup2
+
+    # Common packages
+   - name: Installing common packages.
+     yum: pkg={{ item }} state=present disablerepo=rpmforg*  enablerepo=epel
+     with_items:
+         - http://www.percona.com/downloads/percona-release/redhat/0.1-3/percona-release-0.1-3.noarch.rpm
+         - java-1.8.0-openjdk
+         - screen
+         - wget
+         - sysstat
+         - tcpdump
+         - pigz
+         - smem
+         - unzip
+         - postfix
+         - percona-xtrabackup
+     tags: 
+       - install_common_packages
+ 
+   - name: Installing perl modules
+     yum: pkg={{ item }} state=present disablerepo=rpmforg*  enablerepo=epel
+     with_items:
+         - perl-DBI
+         - perl-DBD-MySQL
+         - perl-Time-HiRes
+         - git
+         - xfsprogs
+     tags: 
+       - cli 
+       - install_packages
+
+   - file: path={{ ec2_tools_dir }}  owner=root group=root state=directory mode=0755
+     tags: 
+       - cli4
+
+   - name: download ec2-api-tools
+     get_url: url=http://s3.amazonaws.com/ec2-downloads/ec2-api-tools.zip dest=/tmp/ mode=0440
+     tags: cli4
+
+   - unarchive: src=/tmp/ec2-api-tools.zip dest=/usr/local/aws-tools/ec2/ copy=no
+     tags: cli4
+
+   - template: src=usr/local/etc/env.conf dest=/usr/local/etc/env.conf owner=root mode=0755
+     tags: 
+       - cli4 
+
+   - name: creating symlink to ec2-api-tools
+     shell: "ls {{ ec2_tools_dir }}"
+     register: ec2_api_tools_version
+     tags: cli4
+
+   - file: src="{{ ec2_tools_dir }}{{ ec2_api_tools_version.stdout }}"  dest="{{ ec2_tools_dir }}/ec2-api-tools"  owner=root group=root state=link
+     ignore_errors: yes
+     tags: cli4
+
+   - name: setting hostname from EC2 tags
+     copy: src=root/sethostname.sh dest=/root/sethostname.sh owner=root group=root mode=0755
+     sudo_user: root
+     when: bootstrap_enabled
+     tags: hostname
+
+   - shell: /root/sethostname.sh
+     when: bootstrap_enabled
+     tags: hostname
+
+   # automagically create any user which has a pubkey in roles/common/files/users
+   
+   - group: name={{ dba_group }} state=present gid={{ dba_gid }}
+     when: bootstrap_enabled
+     tags: users
+
+   - template: src=etc/sudoers.d/dba dest=/etc/sudoers.d/dba owner=root group=root mode=0440
+     when: bootstrap_enabled
+     tags: users
+
+   - name: create individual users
+     local_action: "shell ls roles/common/files/users"
+     register: username
+     sudo: no
+     tags: users
+
+   - user: name={{ item }} group={{ dba_group }} home=/home/{{item}}
+     with_items:
+       - "{{ username.stdout.splitlines() }}"
+     ignore_errors: yes
+     tags: users
+
+   - file: path=/home/{{item}}/.ssh state=directory owner={{item}} group={{dba_group}} mode=0700
+     with_items:
+       - "{{ username.stdout.splitlines() }}"
+     ignore_errors: yes
+     tags: users
+
+   - copy: src=users/{{item}} dest=/home/{{item}}/.ssh/authorized_keys owner={{item}} group={{dba_group}} mode=0644
+     with_items:
+       - "{{ username.stdout.splitlines() }}"
+     ignore_errors: yes
+     tags: users
+
+#delete dba users, removing their home
+   - name: get the list of existing users
+     shell: grep {{ dba_gid }} /etc/passwd | cut -d ':' -f1
+     register: existing_users
+     when: not bootstrap_enabled 
+     sudo: no
+     tags: users
+   
+   - name: delete user {{item}}
+     user: name="{{item}}" state=absent remove=yes
+     with_items:
+       - "{{ existing_users.stdout.splitlines() | difference(username.stdout.splitlines()) }}"
+     ignore_errors: yes
+     when: not bootstrap_enabled 
+     tags: users
+
+   # We do not need to control IPtables
+   - name: Stop Iptables
+     service: name=iptables state=stopped
+   - service: name=iptables enabled=no
+ 
+   
+   - copy: src=usr/local/sbin/rotate_slow_logs.sh dest=/usr/local/sbin/rotate_slow_logs.sh owner=root group=root mode=0700 
+     tags: slowlogs     
+
+   - cron: cron_file="root" user="root" name="Rotate slow logs"
+      hour="0" minute="0" job="/usr/local/sbin/rotate_slow_logs.sh" state=present
+     when: "mysql_role != 'mha_manager'"
+     tags: slowlogs     
+
+   - file: path={{ dbdir }} state=directory
+     when: "mysql_role != 'mha_manager'"
+
+# Checking crond daemon
+   - service: name=crond enabled=yes
+   - service: name=crond state=started

@@ -1,0 +1,16 @@
+---
+
+- include: mysql_common.yml
+  tags: mycommon
+  sudo: yes
+
+- include: mysql_master_users.yml
+  when: "mysql_role == 'master' and bootstrap_enabled"
+  sudo: yes
+  tags: mysql_master
+
+- include: mysql_slave_xtrabackup.yml
+  when: "bootstrap_enabled and mysql_role != 'master'"
+  tags: slave
+
+

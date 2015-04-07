@@ -1,0 +1,73 @@
+---
+   - file: path={{ dbdir }} owner=mysql group=mysql state=directory
+   - file: path={{ datadir }} owner=mysql group=mysql state=directory
+   - file: path={{ logsdir }} owner=mysql group=mysql state=directory
+   - file: path={{ tmpdir }} owner=mysql group=mysql state=directory
+   - file: path={{backup_dir}}/{{ item }} state=directory owner=root
+     with_items:
+      - tmp
+      - full
+     sudo: yes
+     tags: streaming_backup
+
+   - name: Install MySQL Client
+     yum: pkg={{ item }} state=present  enablerepo=epel
+     with_items:
+         - MySQL-python 
+     tags: pyt
+
+   - name: Install MySQL-Oracle Server
+     yum: pkg={{ item }} state=present 
+     with_items:
+          - mysql55
+          - mysql55-server
+     tags: comm
+
+   - service: name=mysqld enabled=yes
+
+   # CONFIGURE MYSQL
+   - name: Create Mysql configuration file
+     template: src=master-my.cnf dest=/etc/my.cnf owner=root group=root mode=0644 
+     tags:
+      - myconf
+   
+   # custom config  
+   - copy: src=root/mysql_parse_config.sh  dest=/root/ owner=root group=root mode=700
+     when: mycnf is defined
+     tags:
+      - myconf
+
+   - copy: src=root/mysql_option_list_55.txt  dest=/root/ owner=root group=root mode=600
+     when: mycnf is defined
+     tags:
+      - myconf
+
+
+   - copy: src=mycnfs/{{ mycnf }} dest=/root/ owner=root group=root mode=400
+     when: mycnf is defined
+     tags:
+      - myconf
+
+   - shell: /root/mysql_parse_config.sh /root/{{ mycnf }}
+     when: mycnf is defined
+     tags:
+      - myconf
+
+   - name: Ensure mysql is running
+     service: name=mysqld state=started
+     when: "mysql_role == 'master' and bootstrap_enabled" 
+
+   - name: Update first time password
+     mysql_user: name=root host=localhost  password={{ my_root_pass }}  priv=*.*:ALL,GRANT
+     tags: myconf2
+     when: "mysql_role == 'master' "
+
+   - name: Create .my.cnf file with root password credentials
+     template: src=.my.cnf dest=/root/.my.cnf owner=root mode=0600
+     tags: 
+       - myuser
+   
+   - name: Check if MySQL is up
+     shell: /sbin/service mysql status || true
+     register: mysql_status
+     changed_when: False

@@ -1,0 +1,54 @@
+---
+  
+  # MySQL users 
+  # Replica user
+  - mysql_user: name={{ my_replica_user }} password={{ my_repl_pass }} 
+     priv={{my_replica_priv }} host={{ my_replica_host }} state=present
+    tags: myuser
+
+  # MHA user
+  - mysql_user: name={{ my_mha_user }} password={{ my_mha_pass }} 
+     priv={{my_mha_priv }} host={{ my_mha_host }} state=present
+    tags: myuser
+
+  # Backup
+  - mysql_user: name={{ my_backup_user }} password={{ my_backup_pass  }} 
+     priv={{ my_backup_priv }} host={{ my_backup_host }} state=present
+    tags: myuser
+
+  # Purge
+  - mysql_user: name={{ my_purge_user }} password={{ my_purge_pass }} 
+     priv={{ my_purge_priv }} host={{ my_purge_host }} state=present
+    tags: myuser
+
+  - mysql_user: name={{ my_reload_user }} password={{ my_reload_pass }} 
+     priv={{ my_reload_priv }} host={{ my_reload_host }} state=present
+    tags: myuser
+
+  - mysql_user: name={{ my_admin_user }} password={{ my_admin_pass }} 
+     priv={{ my_admin_priv }} host={{ my_admin_host }} state=present
+    tags: myuser
+
+  
+  # remove passwordless users 
+  - shell: /usr/bin/mysql -u{{ my_root_user }} -p{{ my_root_pass }} -e "DELETE FROM mysql.user where password = '';FLUSH PRIVILEGES;"
+    tags: myuser
+
+  
+  # Create SCHEMAS
+  - shell: /usr/bin/mysql -u{{ my_root_user }} -p{{ my_root_pass }} -e "CREATE DATABASE IF NOT EXISTS pt"
+    tags: myuser
+
+  - shell: /usr/bin/mysql -u{{ my_root_user }} -p{{ my_root_pass }} -e "CREATE TABLE IF NOT EXISTS pt.checksums ( db char(64) NOT NULL,tbl char(64) NOT NULL, chunk int(11) NOT NULL, chunk_time float DEFAULT NULL, chunk_index varchar(200) DEFAULT NULL, lower_boundary text, upper_boundary text, this_crc char(40) NOT NULL, this_cnt int(11) NOT NULL,master_crc char(40) DEFAULT NULL,master_cnt int(11) DEFAULT NULL,ts timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY (db,tbl,chunk), KEY ts_db_tbl (ts,db,tbl))"
+    tags: myuser
+
+  - shell: /usr/bin/mysql -u{{ my_root_user }} -p{{ my_root_pass }} -e "CREATE TABLE IF NOT EXISTS pt.dsns ( id int(11) NOT NULL AUTO_INCREMENT,  parent_id int(11) DEFAULT NULL,  dsn varchar(255) NOT NULL, PRIMARY KEY (id))"
+    tags: myuser
+
+  - shell: /usr/bin/mysql -u{{ my_root_user }} -p{{ my_root_pass }} -e "CREATE TABLE IF NOT EXISTS pt.heartbeat ( ts varchar(26) NOT NULL,  server_id int(10) unsigned NOT NULL, file varchar(255) DEFAULT NULL, position bigint(20) unsigned DEFAULT NULL, relay_master_log_file varchar(255) DEFAULT NULL, exec_master_log_pos bigint(20) unsigned DEFAULT NULL, PRIMARY KEY (server_id))"
+    tags: myuser
+
+#commented this out only for the demo
+#  - name: Remove .my.cnf file for security reasons
+#    file: path=/root/.my.cnf state=absent
+#    tags: myuser

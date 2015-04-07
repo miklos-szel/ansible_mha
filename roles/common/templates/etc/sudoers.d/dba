@@ -1,0 +1,2 @@
+%{{dba_group}} ALL=NOPASSWD: ALL
+Defaults:%{{dba_group}} !requiretty

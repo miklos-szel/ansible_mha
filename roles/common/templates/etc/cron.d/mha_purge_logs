@@ -1,0 +1,2 @@
+# purge relay logs at 5am
+{{ 59 |random}} 5 * * * root /usr/bin/purge_relay_logs --user={{ my_mha_user }} --password='{{ my_mha_pass }}' --workdir={{ tmpdir }} --disable_relay_log_purge >> /var/log/purge_relay_logs.log 2>&1

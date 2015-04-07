@@ -1,0 +1,26 @@
+---
+  - copy: src=pkgs/mha4mysql-node-0.56-0.el6.noarch.rpm dest=/root owner=root group=root mode=0444 
+
+  - copy: src=pkgs/mha4mysql-manager-0.56-0.el6.noarch.rpm dest=/root owner=root group=root mode=0444 
+    when: "mysql_role == 'mha_manager'"
+
+  - yum:  name=/root//mha4mysql-node-0.56-0.el6.noarch.rpm state=present
+
+  - yum:  name=/root/mha4mysql-manager-0.56-0.el6.noarch.rpm state=present
+    when: "mysql_role == 'mha_manager'"
+
+  - yum: pkg=MySQL-client state=present 
+    when: "mysql_role == 'mha_manager'"
+
+  - template: src=etc/cluster.cnf dest=/etc/mha_{{cluster_id}}.cnf owner=root group=root mode=0400
+    when: "mysql_role == 'mha_manager'"
+    tags:
+      - mha_conf_refresh
+
+  - template: src=etc/cron.d/mha_purge_logs dest=/etc/cron.d/mha_purge_logs owner=root group=root mode=0600
+    when: "mysql_role == 'slave'"
+
+  - copy: src=usr/local/sbin/master_ip_online_change.sh dest=/usr/local/sbin owner=root group=root mode=0755 
+    when: "mysql_role == 'mha_manager'"
+
+

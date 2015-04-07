@@ -1,0 +1,22 @@
+#ROLES
+======
+[system]
+52.28.26.105   mycnf=plsc_s1 mysql_role=master  nickname=dev-plsc-m
+52.28.23.4    mycnf=plsc_s2 mysql_role=slave  nickname=dev-plsc-s1
+52.28.19.44   mysql_role=slave  nickname=dev-plsc-s2
+
+52.28.3.145   mysql_role=mha_manager ephemeral=true
+
+[system:vars]
+cluster_id=dev-plscdemo
+env=dev
+
+[databases:vars]
+master_host=52.28.26.105
+
+# Group to install and configure MySQL
+[databases]
+52.28.26.105  mysql_role=master server_id=1 
+52.28.23.4   mysql_role=slave server_id=2 backup_src=52.28.26.105
+52.28.19.44  mysql_role=slave server_id=3 backup_src=52.28.26.105
+

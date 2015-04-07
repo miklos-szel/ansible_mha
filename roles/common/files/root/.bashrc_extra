@@ -1,0 +1,6 @@
+# .bashrc_extra
+
+. /usr/local/etc/env.conf
+
+PATH=$PATH:$HOME/bin:/usr/sbin:/sbin:$EC2_HOME/bin
+export PATH

@@ -1,0 +1,10 @@
+---
+# Playbook for to create mysql instance
+
+  - include: common.yml
+    sudo: yes
+
+  - include: common_mha.yml
+    sudo: yes
+    tags:
+      - mha_manager

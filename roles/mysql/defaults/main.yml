@@ -1,0 +1,50 @@
+---
+# Variables listed here are applicated to default mysql installation
+
+max_connections: 300
+thread_cache_size: 1024
+auto_increment_offset: 1
+mysql_user: mysql
+mysql_group: mysql
+mysql_logdir: /db/log
+mysql_port: 3306
+mysql_idb_bps: ''
+mysql_long_query_time: 1
+mysql_log_queries_index: False
+mysql_perf_schema: 'OFF'
+backup_dir: /db/backup
+repl_from_master: True 
+skip_change_master: False
+
+
+# admin user
+my_admin_user: admin
+my_admin_priv: "*.*:'ALL PRIVILEGES'"
+my_admin_host: "%"
+
+# replica user
+my_replica_user: repl
+my_replica_priv: "*.*:'EXECUTE,REPLICATION SLAVE'"
+my_replica_host: "%"
+
+# mha user
+my_mha_user: mha
+my_mha_priv: "*.*:'ALL PRIVILEGES'"
+my_mha_host: "%"
+
+# backup user
+my_backup_priv: "*.*:RELOAD,'LOCK TABLES','REPLICATION CLIENT'"
+my_backup_host: localhost
+
+# purge user
+my_purge_priv: "*.*:SUPER"
+my_purge_host: localhost
+
+# reload user
+my_reload_user: reload
+my_reload_priv: "*.*:RELOAD"
+my_reload_host: localhost
+
+
+
+
