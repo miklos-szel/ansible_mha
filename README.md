@@ -28,7 +28,7 @@ Spin up 4 instances via the AWS consolte, we will use them as:
  - 2 slaves 
  - 1 MHA manager node
 
-AMI: RightImage_CentOS_6.5_x64_v14.1.3_HVM_EBS (ami-14211709)
+AMI: RightImage_CentOS_6.5_x64_v14.1.3_HVM_EBS (ami-14211709 - us-east)
 
 Define at least these tags:
  - Name = anything
