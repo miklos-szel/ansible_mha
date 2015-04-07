@@ -29,9 +29,11 @@ Spin up 4 instances via the AWS consolte, we will use them as:
  - 1 MHA manager node
 
 AMI: RightImage_CentOS_6.5_x64_v14.1.3_HVM_EBS (ami-14211709)
-Define at least the following tags:
+
+Define at least these tags:
  - Name = anything
  - Env = anything: dev
+
 Security group: see above
 
 Edit the sample_cluster inventory file and change the ip addresses
@@ -61,7 +63,7 @@ master_host=52.28.26.105
 ```
 
 run the playbook 
-```
+```sh
 ansible-playbook -i clusters/sample_cluster setup.yml -e bootstrap_enabled=true --ask-vault-pass
 ```
 ###MHA examples
@@ -77,7 +79,7 @@ ansible  -i clusters/sample_cluster system --limit  [ip_of_mha_manager_node]   -
 
 #####Online failover
 You can see the current topology in the output of the replication test. 
-```
+```sh
 ansible  -i clusters/sample_cluster system --limit  [ip_of_mha_manager_node]   -a "masterha_master_switch --master_state=alive --orig_master_is_new_slave --conf=/etc/mha_dev-plscdemo.cnf  --interactive=0 --new_master_host=[ip address of the chosen slave ]"
 ```
 #####Failover with a dead master
