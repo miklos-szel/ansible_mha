@@ -84,7 +84,7 @@ ansible  -i clusters/sample_cluster system --limit  [ip_of_mha_manager_node]   -
 ```
 #####Failover with a dead master
 ```
-ansible  -i clusters/sample_cluster system --limit  [ip_of_mha_manager_node]   -a "masterha_master_switch --master_state=dead --conf=/etc/mha_dev-plscdemo.cnf  --dead_master_host=[ip of the dead master] --remove_dead_master_conf"
+ansible  -i clusters/sample_cluster system --limit  [ip_of_mha_manager_node]   -a "masterha_master_switch --master_state=dead --conf=/etc/mha_dev-plscdemo.cnf  --dead_master_host=[ip of the dead master] --interactive=0 --remove_dead_master_conf"
 ```
 
 ###TAGS
