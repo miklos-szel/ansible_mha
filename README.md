@@ -15,7 +15,7 @@ Requirements:
   - ansible
   - EC2 access
   
- AWS Console:
+AWS Console:
 - generate AWS key
 - create a security group with similar or wider policy:
     - ssh from your ip
