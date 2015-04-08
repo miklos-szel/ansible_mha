@@ -6,6 +6,7 @@ Currently it supports the following:
  - Semi-automated failover support with MHA
  - my.cnf file creation based on available ram with templates
     - custom my.cnf setup 
+    - MySQL user management
 
 ###How to install
 
