@@ -74,6 +74,9 @@ run the playbook
 ```sh
 ansible-playbook -i clusters/sample_cluster setup.yml -e bootstrap_enabled=true --ask-vault-pass
 ```
+
+#####All servers has read_only=1 set by default!!!
+
 ###MHA examples
 run these command on the ansible host:
 #####Connectivity test
