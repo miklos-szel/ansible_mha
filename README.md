@@ -7,6 +7,12 @@ Currently it supports the following:
  - Custom my.cnf file creation with templates
 
 ###How to install
+
+Requirements:
+  - ssh client
+  - ansible
+  - EC2 access
+  
  AWS Console:
 - generate AWS key
 - create a security group with similar or wider policy:
@@ -90,7 +96,7 @@ ansible  -i clusters/sample_cluster system --limit  [ip_of_mha_manager_node]   -
 ###TAGS
 #####'users' - User management
 If you want to add a new Linux user to the servers simply copy its public key to roles/common/files/users/ -  filename will be the username. 
-Once the file is deployed the users can conncet to the servers with their own username and can sudo.
+Once the file is deployed the users can connect to the servers with their own username and can sudo.
 If you want to delete a user, simply remove the file and run the playbook again.
 Run the following to apply the changes:
 ```
