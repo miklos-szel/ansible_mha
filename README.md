@@ -4,7 +4,8 @@ Currently it supports the following:
  - Linux user management 
  - Automated master-slave replication setup. You can add new slaves to a cluster online(xtrabackup stream) 
  - Semi-automated failover support with MHA
- - Custom my.cnf file creation with templates
+ - my.cnf file creation based on available ram with templates
+    - custom my.cnf setup 
 
 ###How to install
 
